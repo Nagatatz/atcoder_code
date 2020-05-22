@@ -1,43 +1,37 @@
---TLE
-
-import Data.Maybe
-import Data.List
+import Control.Monad
 import qualified Data.ByteString.Char8 as BS
+import Data.Maybe
+import qualified Data.Vector.Unboxed as VU
+import qualified Data.Vector.Unboxed.Mutable as VUM
 
-readInt = fst . fromJust . BS.readInteger
+readInt = fst . fromJust . BS.readInt
 readIntList = map readInt . BS.words
 
-getInt = readInt <$> BS.getLine
 getIntList = readIntList <$> BS.getLine
 
---teleport :: Num a => [a] -> a -> a
-teleport xs i = xs !! i
-
---teleport_list :: Num a => [a] -> a -> a -> [a]
-teleport_list xs i 0 = i : []
-teleport_list xs i n = i : teleport_list xs (teleport xs i - 1) (n - 1)
-
---get_rep :: Num a => [a] -> a -> [a]
-get_rep xs 0 = [0, length(xs) - 1] 
-get_rep xs n | index == Nothing = get_rep xs (n - 1)
-             | otherwise = [search_index, fromJust index + search_index]
-             where
-               search_index = length xs - n
-               remaining = drop (search_index + 1) xs
-               index = elemIndex (xs !! search_index) remaining 
+calc table order xs index count = do
+  let destination = xs VU.! index - 1
+  visited <- VUM.read table index
+  VUM.write order count (index + 1)
+  if visited /= - 1
+    then return (count, visited)
+    else do
+      VUM.write table index count
+      calc table order xs destination (count + 1)
 
 main = do
-  [n_g, k_g] <- getIntList
-  xs_g <- getIntList
-  let xs = map fromIntegral xs_g
-  let n = fromIntegral n_g
-  let k = fromIntegral k_g
-  let teleport_n = teleport_list xs 0 n
-  let [loop_start, loop_end] = get_rep teleport_n (n+1)
-  let modulation = loop_end - loop_start + 1
-  if k < loop_start then
-    putStrLn $ show (teleport_n !! (k+1))
-  else do
-    let teleport_count = k - loop_start
-    let teleport_index = loop_start + teleport_count `mod` modulation
-    putStrLn $ show (teleport_n !! teleport_index + 1)
+  [n, k] <- getIntList
+  as <- getIntList
+  let as' = VU.fromList as
+  table <- VUM.replicate n (-1) :: IO (VUM.IOVector Int)
+  order <- VUM.replicate n (-1) :: IO (VUM.IOVector Int)
+  (repeated, first) <- calc table order as' 0 0
+  if k <= first
+    then do
+      result <- VUM.read order k
+      print result
+    else do
+      let cycle = repeated - first
+      let remain = (k - first) `mod` cycle
+      result <- VUM.read order (first + remain)
+      print result
