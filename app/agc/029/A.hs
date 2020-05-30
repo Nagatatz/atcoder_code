@@ -6,23 +6,12 @@ readString = map BS.unpack . BS.words
 
 getString = readString <$> BS.getLine
 
-calc :: String -> Int
-calc [] = 0
-calc ss = k + calc ss'''
-  where
-    len_ss = length ss
-    ss' = takeWhile (== 'B') ss
-    len_ss' = length ss'
-    ss'' = dropWhile (== 'B') ss
-    ss''' =
-      if ss'' /= []
-        then replicate len_ss' 'B' ++ tail ss''
-        else []
-    k =
-      if len_ss /= len_ss'
-        then len_ss'
-        else 0
+calc :: String -> Int -> Int
+calc [] cur = 0
+calc (s : ss) cur
+  | s == 'W' = cur + calc ss cur
+  | otherwise = calc ss (cur + 1)
 
 main = do
   [s] <- getString
-  print $ calc s
+  print $ calc s 0
