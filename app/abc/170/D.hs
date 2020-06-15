@@ -40,9 +40,8 @@ seek table (a : as) xs = do
 main = do
   n <- getInt
   as <- getIntList
-  let as' = sort as
-  let m = last as'
+  let m = maximum as
   table <- VUM.replicate (m + 1) 0 :: IO (VUM.IOVector Int)
-  fillVector table as' m
-  rs <- seek table as' []
+  fillVector table as m
+  rs <- seek table as []
   print $ length rs
