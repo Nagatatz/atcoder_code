@@ -1,44 +1,54 @@
 import qualified Data.ByteString.Char8 as BS
+import Data.Function
 import Data.List
 import Data.Maybe
 import Data.Ord
 
 readInt = fst . fromJust . BS.readInt
 
-readInteger = fst . fromJust . BS.readInteger
-
 readIntList = map readInt . BS.words
-
-readIntegerList = map readInteger . BS.words
 
 getIntList = readIntList <$> BS.getLine
 
-getIntegerList = readIntegerList <$> BS.getLine
+prod = foldl1' (\x y -> mod1G7 (x * y))
 
 mod1G7 n = n `mod` (10 ^ 9 + 7)
 
 main :: IO ()
 main = do
   [n, k] <- getIntList
-  as <- getIntegerList
-  if all (<= 0) as
-    then
-      if odd k
-        then print $ mod1G7 (product(take k (sortBy (comparing (\a -> (abs a))) as)))
-        else print $ mod1G7 (product(take k (sortBy (comparing (\a -> (- (abs a)))) as)))
-    else do
-      let as' = sortBy (comparing (\a -> (- (abs a)))) as
-      let bs = take k as'
-      let s = product bs
-      if s > 0
-        then print $ mod1G7 (s)
+  as <- getIntList
+  if k == n
+    then print $ prod as
+    else
+      if all (<= 0) as
+        then
+          if odd k
+            then print $ prod (take k (sortBy (compare `on` Down) as))
+            else print $ prod (take k (sort as))
         else do
-          let bs' = filter (\b' -> b' < 0) (reverse bs)
-          let as'' = filter (\a -> a > 0) (drop k as')
-          let c = if length as'' == 0 || length bs' == 0 then 0 else (product (bs) `div` (head (bs'))) * (head as'')
-          let bs'' = filter (\b' -> b' > 0) (reverse bs)
-          let as''' = filter (\a -> a < 0) (drop k as')
-          let c' = if length as''' == 0 || length bs'' == 0 then 0 else (product (bs) `div` (head (bs''))) * (head as''')
-          if c == 0 && c' == 0
-            then print $ mod1G7 (product (take k (filter (\a -> a <= 0) (reverse as'))))
-            else print $ mod1G7 (maximum [c, c'])
+          let as' = sortBy (comparing (\a -> (- (abs a)))) as
+          let bs = take k as'
+          if elem 0 bs
+            then print 0
+            else
+              if even (length (filter (\x -> x < 0) bs))
+                then print $ prod bs
+                else do
+                  let bsr = reverse bs
+                  let asr = drop k as'
+                  let bs' = filter (\b' -> b' < 0) bsr
+                  let as'' = filter (\a -> a >= 0) asr
+                  let c = if length as'' == 0 || length bs' == 0 then 0 else prod ((head as'') : (delete (head bs') bs))
+                  let bs'' = filter (\b' -> b' > 0) bsr
+                  let as''' = filter (\a -> a <= 0) asr
+                  let c' = if length as''' == 0 || length bs'' == 0 then 0 else prod ((head as''') : (delete (head bs'') bs))
+                  if c == 0 || c' == 0
+                    then
+                      if c == 0 && c' == 0
+                        then print 0
+                        else print $ maximum [c, c']
+                    else do
+                      if head as'' * head bs'' > head as''' * head bs'
+                        then print c
+                        else print c'
