@@ -1,0 +1,13 @@
+# 使い方（README「環境構築」参照）
+#   docker compose build
+#   docker compose run --rm atcoder scripts/run.sh contests/abc/117/C.hs
+#   docker compose run --rm -T atcoder scripts/run.sh contests/abc/117/C.hs < input.txt
+services:
+  atcoder:
+    build: .
+    image: atcoder-haskell:ghc-9.8.4
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
