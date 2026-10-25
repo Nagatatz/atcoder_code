@@ -102,7 +102,13 @@ acc config default-template haskell
 
 ## 環境構築
 
-次の 3 通りがあります。普段は (a) か (b) を使い、どうしても必要なときだけ (c) にしてください。
+次の 3 通りがあります。どれでもジャッジと同じ GHC 9.8.4 / cabal 3.14.2.0 / 依存ライブラリ（freeze 済み）でビルドされます。
+
+| 方法 | ホストに入れるもの | 向いている場合 |
+| --- | --- | --- |
+| (a) Docker だけ | Docker | ターミナル中心で使う。手元を汚したくない |
+| (b) IntelliJ IDEA + Dev Container | Docker（+ IntelliJ IDEA Ultimate） | Ultimate があり、ホストに GHC を入れたくない |
+| (c) ネイティブ（手元に直接入れる） | ghcup で GHC / cabal / HLS、LLVM 15 など | ビルドを速くしたい。無料版 IntelliJ や他のエディタで使う |
 
 ### (a) Docker だけで使う（ホストに GHC 不要）
 
@@ -136,11 +142,11 @@ docker compose run --rm atcoder
 - **IntelliJ IDEA の版**: 2025.3 から Community / Ultimate が 1 つの配布物に統合され、無料版と Ultimate サブスクリプションの区別になりました。**Dev Containers は Ultimate の機能**です。
 - **Dev Container のネイティブモード**（2026.1 から既定。IDE はホストで動き、コンテナ内のエージェント経由でファイル操作やプロセス実行をする）は
   プラットフォーム（EelApi）対応のプラグインでないとコンテナ内のツールを使えません。Haskell LSP プラグインは今のところ
-  HLS をホスト側のパスから探して起動する実装なので（`java.io.File` / `SystemInfo` を使っています）、**ネイティブモードではコンテナ内の HLS は使われません**。
+  HLS をホスト側のパスから探して起動する実装なので（`java.io.File` / `SystemInfo` を使っています）、**ネイティブモードではコンテナ内の HLS は使われないと考えられます**（プラグインのコードからの判断で、実機では未確認）。
 
-おすすめの手順は手元の環境によって次のどれかです。
+使い方は次のどれかです。
 
-**b-1. Ultimate がある場合: Dev Container（リモート開発モード）**
+**b-1. Ultimate: Dev Container（リモート開発モード）で使う — ホストに GHC 不要**
 
 1. Docker を起動しておく。
 2. IntelliJ IDEA の Settings → Advanced Settings → Dev Containers の **「Open devcontainer projects natively」をオフ** にする（IDE のバックエンドをコンテナ内で動かすモードにするため）。
@@ -151,16 +157,10 @@ docker compose run --rm atcoder
 5. `postCreateCommand` の `scripts/setup-hls.sh` が GHC 環境ファイルを作るので、HLS（コンテナ内の `haskell-language-server-wrapper`）が `lens` や `vector` などの import を解決できます。
 6. 実行はコンテナ内ターミナルで `scripts/run.sh contests/abc/117/C.hs`。
 
-この方法なら **ホストに GHC / HLS を入れる必要はありません**。
+**b-2. ネイティブに入れた環境で使う（Ultimate / 無料版どちらでも）→ (c) を参照**
 
-**b-2. 無料版 IntelliJ IDEA の場合: エディタ機能だけネイティブに入れる**
-
-Dev Containers が使えないので、HLS はホストで動かす必要があります。ビルドと実行は (a) の Docker に任せ、
-**HLS 用の GHC だけ** ghcup でホストに入れるのが一番簡単です（下の (c)）。そのうえで:
-
-1. Settings → Plugins → Marketplace で **Haskell LSP** をインストール（LSP4IJ も一緒に入ります）。
-2. Settings → Tools → Haskell LSP で HLS のパス（`~/.ghcup/bin/haskell-language-server-wrapper`）を指定。PATH 上にあれば自動で見つかります。
-3. このリポジトリを開く前に一度 `scripts/setup-hls.sh` を実行（依存をビルドして `.ghc.environment.*` を作る）。
+ホストに GHC / HLS を入れる方法です。無料版の IntelliJ IDEA では Dev Container が使えないので、こちらになります。
+手順は **(c) ネイティブ環境** の c-1〜c-3 で GHC などを入れ、**c-4 の IntelliJ IDEA の設定** をしてください。
 
 **b-3. （実験的）無料版でホストに GHC を入れずに済ませたい場合**
 
@@ -173,29 +173,192 @@ docker compose build          # イメージ atcoder-haskell:ghc-9.8.4 を作る
 scripts/hls-docker.sh --probe # 動作確認（コンテナ内の HLS のバージョンを表示）
 ```
 
-### (c) ネイティブ環境（ghcup）
+### (c) ネイティブ環境（手元に直接入れる）
 
-公式スクリプトと同じ手順です（Ubuntu / Debian の例）。
+[ghcup](https://www.haskell.org/ghcup/) で GHC / cabal / HLS を入れ、ジャッジと同じ依存ライブラリを手元でビルドします。
+流れは c-1（OS ごとの準備）→ c-2（ghcup で GHC 等を入れる）→ c-3（依存のビルドと動作確認）→ c-4（IntelliJ IDEA の設定）です。
+
+入れるバージョン:
+
+| ツール | バージョン | 備考 |
+| --- | --- | --- |
+| GHC | 9.8.4 | ジャッジと同じ |
+| cabal-install | 3.14.2.0 | ジャッジと同じ |
+| HLS | 2.14.0.0 | GHC 9.8.4 用のバイナリを含む最新版（エディタ用） |
+| LLVM | 15 | `-fllvm` 用。GHC 9.8 が対応するのは LLVM 11〜15 で、ジャッジは llvm-15 |
+
+#### c-1. OS ごとの準備
+
+**macOS（Apple Silicon / Intel）**
+
+1. Xcode Command Line Tools を入れる（C コンパイラ。ghcup のインストール中にダイアログが出ることもあります）。
+
+   ```sh
+   xcode-select --install
+   ```
+
+2. [Homebrew](https://brew.sh/) で LLVM 15 と C ライブラリを入れる。
+
+   ```sh
+   brew install llvm@15 gmp gsl glpk pkgconf
+   ```
+
+   - `llvm@15`（15.0.7、ジャッジと同じ版）は 2026 年 10 月時点で Homebrew にあり、非推奨にもなっていません。
+     バイナリ（bottle）は macOS 14 Sonoma 用までですが、Homebrew は新しい macOS でも古い macOS 用の bottle を使うので、通常はソースからのビルドにはなりません。
+   - `llvm@15` は keg-only（`/opt/homebrew/bin` にリンクされない）なので、`opt` / `llc` を PATH に足します。
+     **PATH の先頭に置くと Apple の clang が LLVM 15 の clang に置き換わる**ので、末尾に足してください。
+
+     ```sh
+     # ~/.zshrc に追記
+     export PATH="$PATH:$(brew --prefix llvm@15)/bin"
+     ```
+
+   - LAPACK / BLAS は macOS 標準の Accelerate フレームワークを使うので（`hmatrix` の macOS 向け設定）、別途入れる必要はありません。
+
+3. **Apple Silicon の場合**: Homebrew は `/opt/homebrew` に入りますが、`hmatrix-gsl` / `hmatrix-glpk` が探すのは `/usr/local` と `/opt/local` だけです。
+   リポジトリ直下に `cabal.project.local`（git 管理外）を作って場所を教えてください。
+
+   ```sh
+   cat > cabal.project.local <<'EOF2'
+   package *
+       extra-include-dirs: /opt/homebrew/include
+       extra-lib-dirs: /opt/homebrew/lib
+   EOF2
+   ```
+
+   - GHC 9.8.4 / cabal 3.14.2.0 / HLS 2.14.0.0 には ghcup で Apple Silicon（aarch64-apple-darwin）用のバイナリがあります。Rosetta は不要です。
+   - ghcup の公式表では macOS aarch64 の HLS は「実験的（⚠️）」扱いです。動かないときは b-1（Dev Container）か b-3 を使ってください。
+   - Intel 版 Homebrew（`/usr/local`）と Apple Silicon 版（`/opt/homebrew`）を混ぜないでください。
+   - Intel Mac は Homebrew が `/usr/local` にあるので `cabal.project.local` は不要です（Homebrew は Intel 向け bottle の新規ビルドを終えており、ソースビルドになる場合があります）。
+
+**Ubuntu / Debian**
+
+公式のインストールスクリプトと同じパッケージです（Ubuntu 24.04 で確認）。
 
 ```sh
-sudo apt-get install -y build-essential curl libffi-dev libgmp-dev libncurses-dev libtinfo6 \
+sudo apt-get update
+sudo apt-get install -y build-essential curl git libffi-dev libgmp-dev libncurses-dev libtinfo6 zlib1g-dev pkg-config \
   llvm-15 libgsl0-dev liblapack-dev libatlas-base-dev libglpk-dev
-curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_MINIMAL=1 sh
-source ~/.ghcup/env
-ghcup install cabal 3.14.2.0 && ghcup set cabal 3.14.2.0
-ghcup install ghc 9.8.4 && ghcup set ghc 9.8.4
-ghcup install hls 2.14.0.0 && ghcup set hls 2.14.0.0   # エディタ連携用
-
-cabal update
-cabal build --flags=+atcoder --only-dependencies main
+echo 'export PATH="$PATH:/usr/lib/llvm-15/bin"' >> ~/.bashrc   # opt / llc を PATH に
 ```
 
-- `-fllvm` のため LLVM 15 の `opt` / `llc` が PATH に必要です（Ubuntu なら `/usr/lib/llvm-15/bin`）。
-  llvm-15 が apt に無いディストリビューション（Debian 13 など）では
-  [LLVM 15 のリリースバイナリ](https://github.com/llvm/llvm-project/releases/tag/llvmorg-15.0.6) を展開して PATH に足してください。
-- macOS は `brew install llvm@15 gsl glpk` などで代わりにできますが、ジャッジと完全に同じにはなりません。
+- llvm-15 が apt に無いディストリビューション（Debian 13 など）では
+  [LLVM 15 のリリースバイナリ](https://github.com/llvm/llvm-project/releases/tag/llvmorg-15.0.6) を展開して `bin` を PATH に足してください
+  （15.0.7 には汎用 Linux 向けバイナリがないため 15.0.6）。
 - `libatlas-base-dev` が無い環境では `libblas-dev` で代わりになります。
-- `cabal update` で `http://hackage.haskell.org` に繋がらない環境では `~/.config/cabal/config` の `url:` を `https://` にしてください。
+
+**Windows: WSL2 + Ubuntu を推奨**
+
+ネイティブ Windows でも ghcup は動きますが、LLVM 15 や GSL / GLPK / LAPACK をそろえるのが大変なので、WSL2 の Ubuntu を使ってください。
+
+1. PowerShell（管理者）で WSL2 と Ubuntu 24.04 を入れて再起動する。
+
+   ```powershell
+   wsl --install -d Ubuntu-24.04
+   ```
+
+2. Ubuntu を起動し、上の **Ubuntu / Debian** の手順を実行する。
+3. リポジトリは **WSL 側のホーム（例: `~/atcoder_code`）に clone** する。`/mnt/c/...` 上だとビルドがかなり遅くなります。
+
+   ```sh
+   git clone https://github.com/Nagatatz/atcoder_code.git ~/atcoder_code
+   ```
+
+4. 以降の c-2 / c-3 は WSL の Ubuntu の中で実行します。IntelliJ IDEA の設定は c-4 の「Windows（WSL2）の場合」を参照。
+
+#### c-2. ghcup で GHC 9.8.4 / cabal 3.14.2.0 / HLS 2.14.0.0 を入れる
+
+```sh
+# ghcup 本体だけを入れる（シェルの rc ファイルに PATH 設定を追記）
+curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | \
+  BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_MINIMAL=1 BOOTSTRAP_HASKELL_ADJUST_BASHRC=1 sh
+source ~/.ghcup/env
+
+ghcup install ghc 9.8.4        && ghcup set ghc 9.8.4
+ghcup install cabal 3.14.2.0   && ghcup set cabal 3.14.2.0
+ghcup install hls 2.14.0.0     && ghcup set hls 2.14.0.0
+
+ghc --version     # The Glorious Glasgow Haskell Compilation System, version 9.8.4
+cabal --version   # cabal-install version 3.14.2.0
+haskell-language-server-wrapper --version   # 2.14.0.0
+which opt llc     # LLVM 15 の opt / llc が見えること
+```
+
+対話形式で入れたい場合は `BOOTSTRAP_HASKELL_...` を付けずに実行し、質問に答えてください。
+すでに別のバージョンの GHC を使っている場合も、`ghcup set ghc 9.8.4` で 9.8.4 を既定にしておくと HLS が迷いません。
+
+#### c-3. 依存ライブラリのビルドと動作確認
+
+```sh
+cd atcoder_code
+cabal update
+
+# freeze（cabal.project.freeze）どおりに依存 89 パッケージ（とその依存）を -O2 -fllvm でビルド。
+# 初回は数十分かかります（こちらの Linux 環境で約 40 分）。2 回目以降は cabal のストアから使われます。
+scripts/setup-hls.sh
+#  ↑ 中身は cabal build --flags=+atcoder --only-dependencies --write-ghc-environment-files=always main
+#    で、HLS 用の .ghc.environment.* も作ります
+
+# 動作確認: テンプレートの main は 1 行目の n と 2 行目の数の合計を出力する
+printf '3\n1 2 3\n' | scripts/run.sh template/Main.hs    # → 9 (= 3 + 1 + 2 + 3)
+scripts/run.sh contests/abc/117/C.hs                       # 標準入力から読む
+
+# 全解答の型チェック（失敗したファイルは check-all.log に出る）
+scripts/check-all.sh
+```
+
+`scripts/check-all.sh` は 2026-10 時点で 282 ファイル中 6 ファイルが失敗します（書きかけ・バグのある解答で、環境の問題ではありません）。
+
+#### c-4. IntelliJ IDEA の設定（Ultimate / 無料版共通）
+
+1. **プラグイン**: Settings → Plugins → Marketplace で **Haskell LSP** をインストールし、IDE を再起動（依存する **LSP4IJ** も一緒に入ります）。
+2. **HLS のパス**: Settings → Tools → **Haskell LSP** で `haskell-language-server-wrapper` のパスを指定します。
+   PATH 上にあれば自動で見つかりますが、IDE を Dock / デスクトップから起動すると PATH が通っていないことがあるので、絶対パスで指定するのが確実です。
+   - macOS: `/Users/<ユーザー名>/.ghcup/bin/haskell-language-server-wrapper`
+   - Linux: `/home/<ユーザー名>/.ghcup/bin/haskell-language-server-wrapper`
+3. **HLS 用の環境ファイル**: プロジェクトを開く前に（または依存を変えたら）ターミナルで `scripts/setup-hls.sh` を実行します。
+   これで `.ghc.environment.*` ができ、`hie.yaml`（direct cradle）経由で HLS が `vector` や `ac-library-hs` などの import を解決できます。
+   すでに IDE を開いていた場合は、LSP4IJ の Language Servers ビューから HLS を再起動してください。
+4. **解答の実行**: 次のどれかです。
+   - **ターミナル**（IDE 下部の Terminal）: `scripts/run.sh contests/abc/117/C.hs`。対話的に入力できるのはこれだけです。
+   - **External Tools（開いているファイルを実行）**: Settings → Tools → External Tools → `+` で次のように登録し、
+     Settings → Keymap → External Tools でショートカットを割り当てると便利です。
+     入力は解答と同じディレクトリの同名 `.in` ファイル（例: `C.hs` → `C.in`、`.gitignore` 済み）から読みます。
+
+     | 項目 | 値 |
+     | --- | --- |
+     | Name | `AtCoder run` |
+     | Program | `$ProjectFileDir$/scripts/run.sh` |
+     | Arguments | `$FilePathRelativeToProjectRoot$ $FileDir$/$FileNameWithoutExtension$.in` |
+     | Working directory | `$ProjectFileDir$` |
+
+   - **Shell Script の Run Configuration（特定のファイル用）**: Run → Edit Configurations → `+` → **Shell Script** →
+     Execute: Script file、Script path: `scripts/run.sh`、Script options: `contests/abc/117/C.hs input.txt`、
+     Working directory: `$PROJECT_DIR$`。Script path / Script options では「今開いているファイル」のマクロは使えないので、
+     開いているファイルを実行したい場合は上の External Tools を使ってください。
+
+**Windows（WSL2）の場合**
+
+- プロジェクトは `\\wsl.localhost\Ubuntu-24.04\home\<ユーザー名>\atcoder_code` として開きます。
+  Haskell LSP プラグインはプロジェクトが WSL のパスにあると、HLS を `wsl.exe -d <ディストリビューション> -- bash -lc` で WSL 内で起動し、ファイルパスを相互に変換します。
+- その際 `~/.bashrc` は読まれない（ログインシェルかつ非対話のため）ので、HLS のパスには **WSL 内の絶対パス**
+  `/home/<ユーザー名>/.ghcup/bin/haskell-language-server-wrapper` を指定してください。
+- `scripts/setup-hls.sh` や `scripts/run.sh` は WSL のターミナル（IntelliJ の Terminal で Ubuntu のシェルを選ぶ）で実行します。
+- WSL 対応はプラグインの機能説明とコードに基づく手順で、実機では未確認です。
+
+#### c-5. うまくいかないとき
+
+- **`could not execute: opt` / `llc` が見つからない、LLVM のバージョンが違う**:
+  `-fllvm` のため LLVM の `opt` / `llc` が PATH に必要です。`which opt llc` と `opt --version` で 15 系が見えるか確認してください
+  （macOS: `$(brew --prefix llvm@15)/bin`、Ubuntu: `/usr/lib/llvm-15/bin`）。GHC 9.8 は LLVM 16 以降に対応していません。
+- **HLS が「GHC のバージョンが合わない」「haskell-language-server-9.x.x が無い」と言う**:
+  `ghc --version` が 9.8.4 か確認し、違えば `ghcup set ghc 9.8.4`。HLS は 2.14.0.0 を使ってください（`ghcup list -t hls` で確認）。
+  その後 `scripts/setup-hls.sh` をやり直して HLS を再起動します。
+- **HLS で import が解決できない（`Could not find module`）**: `scripts/setup-hls.sh` を実行して `.ghc.environment.*` を作り直してください。
+- **`cabal update` が失敗する**: `http://hackage.haskell.org` に繋がらない環境では、cabal の設定ファイル
+  （`~/.config/cabal/config`。`~/.cabal` がある場合は `~/.cabal/config`）の `repository hackage.haskell.org` の `url:` を `https://hackage.haskell.org/` にしてください。
+- **macOS で `cannot find -lgsl` / `-lglpk`、`gsl/gsl_*.h: No such file`**: c-1 の `cabal.project.local`（Apple Silicon）を確認してください。
+- **Linux で `cannot find -lgmp` などのリンクエラー**: c-1 の apt パッケージが入っているか確認してください。
 
 ### 参考
 
@@ -206,6 +369,10 @@ cabal build --flags=+atcoder --only-dependencies main
 - [What's New in IntelliJ IDEA 2026.1](https://www.jetbrains.com/idea/whatsnew/2026-1/)（Dev Container のネイティブ対応は Ultimate）
 - [Open a project with Dev Container natively](https://www.jetbrains.com/help/idea/open-project-with-dev-container-natively.html) / [The Dev Containers Story: Introducing EelApi for Plugin Authors](https://blog.jetbrains.com/platform/2026/06/the-dev-containers-story-introducing-eelapi-for-plugin-authors/)
 - [Remote Development FAQ](https://www.jetbrains.com/remote-development/)（リモート開発は有料サブスクリプションが必要）
+- ネイティブ環境: [GHCup](https://www.haskell.org/ghcup/) / [GHCup の対応プラットフォーム](https://www.haskell.org/ghcup/install/support/)（macOS aarch64 の HLS は実験的扱い） / [HLS 2.14.0.0 リリース](https://github.com/haskell/haskell-language-server/releases/tag/2.14.0.0)（GHC 9.8.4 用バイナリを含む）
+- [Homebrew: llvm@15](https://formulae.brew.sh/formula/llvm@15) / [Homebrew の Bottles](https://docs.brew.sh/Bottles) / [GHC 9.8 の対応 LLVM（configure.ac: 11 以上 16 未満）](https://gitlab.haskell.org/ghc/ghc/-/blob/ghc-9.8.4-release/configure.ac)
+- IntelliJ IDEA: [External Tools](https://www.jetbrains.com/help/idea/settings-tools-external-tools.html) / [組み込みマクロ](https://www.jetbrains.com/help/idea/built-in-macros.html) / [Shell Script の Run Configuration](https://www.jetbrains.com/help/idea/run-debug-configuration-shell-script.html)
+- [WSL のインストール](https://learn.microsoft.com/ja-jp/windows/wsl/install)
 
 ## ライセンス
 
