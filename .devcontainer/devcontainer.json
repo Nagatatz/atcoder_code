@@ -1,0 +1,30 @@
+{
+  // AtCoder 2025 ジャッジ相当 (GHC 9.8.4 / cabal 3.14.2.0 / HLS) の開発コンテナ
+  "name": "atcoder-haskell (GHC 9.8.4)",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
+  "remoteUser": "ubuntu",
+  "updateRemoteUserUID": true,
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  // HLS が import を解決できるよう、ジャッジと同じ依存の GHC 環境ファイルを生成しておく
+  "postCreateCommand": "scripts/setup-hls.sh",
+  "customizations": {
+    "jetbrains": {
+      "plugins": [
+        "com.redhat.devtools.lsp4ij",
+        "boo.fox.haskelllsp"
+      ]
+    },
+    "vscode": {
+      "extensions": [
+        "haskell.haskell"
+      ],
+      "settings": {
+        "haskell.manageHLS": "PATH"
+      }
+    }
+  }
+}

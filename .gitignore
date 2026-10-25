@@ -1,5 +1,26 @@
+# cabal
+dist-newstyle/
+cabal.project.local
+cabal.project.local~
+.ghc.environment.*
+*.hi
+*.o
+*.dyn_hi
+*.dyn_o
+
+# scripts/run.sh の作業ディレクトリ / scripts/check-all.sh のログ
+.solution/
+check-all.log
+
+# 旧 stack 環境
 .stack-work/
+
+# エディタ
+.idea/
+*.iml
 *~
+
+# atcoder-cli / online-judge-tools
 *.in
 *.out
 contest.acc.json

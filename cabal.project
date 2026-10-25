@@ -1,0 +1,26 @@
+-- AtCoder 2025 ジャッジ (Haskell GHC 9.8.4) の cabal.project をそのまま流用（packages 行のみ変更）。
+-- 出典: https://img.atcoder.jp/file/language-update/2025-10/052-ghc_9-8-3.toml
+-- ghc-options の -fllvm により LLVM 15 (opt/llc) が PATH 上に必要。
+
+packages: ./atcoder.cabal
+
+constraints: bitvec +libgmp,
+             -- clock +llvm,
+             text +simdutf,
+             vector-algorithms +llvm
+optimization: 2
+
+package *
+    compiler: ghc
+    ghc-options: -fllvm -Wall
+
+allow-newer: witherable:containers,
+             semialign:containers,
+             scientific:containers,
+             parallel:containers,
+             megaparsec:containers,
+             foldl:containers,
+             linear-generics:containers,
+             indexed-traversable:containers,
+             hashable:containers
+
