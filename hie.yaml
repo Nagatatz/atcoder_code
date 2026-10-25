@@ -1,0 +1,9 @@
+# haskell-language-server 設定。
+# 解答ファイルは cabal のコンポーネントに属さない単体の Main モジュールなので direct cradle で読む。
+# 依存パッケージ (lens, vector, ac-library-hs など) は scripts/setup-hls.sh が作る
+# GHC 環境ファイル .ghc.environment.* から見える。
+cradle:
+  direct:
+    arguments:
+      - "-XGHC2021"
+      - "-Wall"
